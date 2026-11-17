@@ -249,10 +249,13 @@ function drawPins(){   // 겹치는 핀은 화면에서 서로 안 가리게 벌
   if(!LM)return;
   if(!pinLayer)pinLayer=L.layerGroup().addTo(LM);
   pinLayer.clearLayers();
-  const items=[],seenHotel={};
+  const items=[],hotels=[];
   lastPts.forEach(p=>{
-    if(isHotelStop(p.s)){const k=p.s.query||p.s.name;if(seenHotel[k])return;seenHotel[k]=1;items.push({p,hotel:true})}
-    else items.push({p,hotel:false});
+    if(isHotelStop(p.s)){   // 같은 숙소(이름이 같거나 150m 안)는 핀 하나로 합침
+      const nm=String(p.s.name||"").replace(/\s+/g,"").toLowerCase();
+      if(hotels.some(h=>h.nm===nm||hav(h.c,p.c)<0.15))return;
+      hotels.push({nm,c:p.c});items.push({p,hotel:true});
+    }else items.push({p,hotel:false});
   });
   if(!items.length)return;
   const R=31,HY=23,placed=[];   // HY: 빨간 핀은 뾰족한 끝이 실제 위치, 둥근 머리는 그 위
