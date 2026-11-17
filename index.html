@@ -444,5 +444,6 @@ function renderSights(){
 }
 
 render();
-const saved=storeGet();if(saved)unlock(saved);
+const DEFAULT_PW="rome";   /* 비밀번호 입력 없이 자동 입장 (서버 비밀번호가 바뀌면 입력 화면이 다시 나와요) */
+unlock(storeGet()||DEFAULT_PW);
 </script></body></html>
