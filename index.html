@@ -24,7 +24,7 @@ header{padding:18px 20px 6px}h1{margin:0;font-size:21px}header p{margin:2px 0 0;
 .main{padding:16px}.main h2{margin:0 0 12px;font-size:18px}
 .tabs{display:flex;gap:6px;margin-bottom:14px}.tabs button{font:inherit;font-size:14px;font-weight:700;padding:8px 14px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}.tabs button.on{background:var(--acc);color:var(--card);border-color:var(--acc)}
 .mapbox{margin:0 0 16px;display:grid;gap:6px}#lmap{width:100%;height:480px;border-radius:10px;z-index:0;background:var(--acc2)}.mapnote{margin:0;font-size:12px;color:var(--mut)}
-.lm{width:30px;height:30px;border-radius:50%;background:#1d4ed8;color:#fff;border:3px solid #fff;font:800 14px/24px "IBM Plex Sans KR",sans-serif;text-align:center;box-shadow:0 0 0 1.5px #0f172a,0 3px 8px rgba(0,0,0,.55)}.lm.f{background:#ea580c}.lm.e{background:#dc2626}
+.lm{width:30px;height:30px;border-radius:50%;background:#1d4ed8;color:#fff;border:3px solid #fff;font:800 14px/24px "IBM Plex Sans KR",sans-serif;text-align:center;box-shadow:0 0 0 1.5px #0f172a,0 3px 8px rgba(0,0,0,.55)}.lm.q{background:#94a3b8;border-style:dashed;border-color:#fff;color:#fff}.lm.f{background:#ea580c}.lm.e{background:#dc2626}
 ol.stops{list-style:none;margin:0;padding:0 0 0 18px;border-left:3px solid var(--acc2)}
 .stop{position:relative;padding:8px 0 10px 14px}
 .stop input.num{position:absolute;left:-35px;top:8px;width:30px;height:30px;padding:0;border-radius:50%;background:var(--acc);color:var(--card);border:2px solid var(--card);font:inherit;font-weight:700;font-size:13px;text-align:center;-moz-appearance:textfield;appearance:textfield}
@@ -97,7 +97,27 @@ const GEOQ={"TOC Hostel Sevilla":"Calle Miguel Mañara 18, Sevilla, Spain","TOC 
 const okLL=c=>Array.isArray(c)&&c.length===2&&isFinite(c[0])&&isFinite(c[1])&&c[0]>=33&&c[0]<=62&&c[1]>=-13&&c[1]<=32;   // 유럽 범위 밖 좌표는 잘못된 값으로 보고 무시
 const ll=s=>okLL(s.ll)?s.ll:(COORDS[s.query]||(okLL(geoCache[s.query])?geoCache[s.query]:null));
 const geoTried=new Set();let geoBusy=false;
-async function geocodeMissing(){   // 좌표가 없는 장소를 주소로 찾아 지도에 표시 (같은 날 앞뒤 장소 근처에서만 검색, 한 번 찾으면 기기에 저장)
+const CITYPT={"Rome":[41.9,12.49],"Florence":[43.77,11.25],"Venice":[45.44,12.32],"Lucerne":[47.05,8.31],"Strasbourg":[48.58,7.75],"Paris":[48.86,2.35],"Barcelona":[41.39,2.17],"Porto":[41.15,-8.61],"Lisbon":[38.72,-9.14],"Seville":[37.39,-5.99],"Granada":[37.18,-3.6],"Madrid":[40.42,-3.7],"Ronda":[36.74,-5.17],"Rennes":[48.11,-1.67],"Versailles":[48.8,2.12],"Mont-Saint-Michel":[48.64,-1.51]};
+const nearestCity=nb=>{if(!nb)return "";let best="",bd=60;for(const k in CITYPT){const d=hav(nb,CITYPT[k]);if(d<bd){bd=d;best=k}}return best};   // 앞뒤 장소 기준 가장 가까운 도시(60km 이내)
+const sleep=ms=>new Promise(res=>setTimeout(res,ms));
+async function geoSearch(text,nb){   // 한 가지 검색어로 찾기: Nominatim → (없으면) Photon. 앞뒤 장소(nb) 근처 결과만 인정
+  const near=x=>okLL(x)&&(!nb||hav(x,nb)<40);
+  try{
+    let url="https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&q="+encodeURIComponent(text);
+    if(nb){const dd=0.3;url+="&viewbox="+[nb[1]-dd,nb[0]+dd,nb[1]+dd,nb[0]-dd].join(",")+"&bounded=1"}
+    const j=await (await fetch(url)).json();
+    const c=(Array.isArray(j)?j:[]).map(x=>[+x.lat,+x.lon]).find(near);if(c)return c;
+  }catch(e){}
+  await sleep(300);
+  try{
+    let url="https://photon.komoot.io/api/?limit=6&q="+encodeURIComponent(text);
+    if(nb)url+="&lat="+nb[0]+"&lon="+nb[1];
+    const j=await (await fetch(url)).json();
+    const c=((j&&j.features)||[]).map(f=>f.geometry&&f.geometry.coordinates?[+f.geometry.coordinates[1],+f.geometry.coordinates[0]]:null).find(near);if(c)return c;
+  }catch(e){}
+  return null;
+}
+async function geocodeMissing(){   // 좌표가 없는 장소를 지명으로 찾아 지도에 표시 (같은 날 앞뒤 장소 근처에서만, 한 번 찾으면 기기에 저장)
   if(geoBusy)return;geoBusy=true;let found=false;
   try{
     const jobs=[];
@@ -107,14 +127,13 @@ async function geocodeMissing(){   // 좌표가 없는 장소를 주소로 찾�
       jobs.push({s,nb});
     }));
     for(const {s,nb} of jobs){
-      try{
-        let url="https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&q="+encodeURIComponent(GEOQ[s.query]||s.query);
-        if(nb){const dd=0.3;url+="&viewbox="+[nb[1]-dd,nb[0]+dd,nb[1]+dd,nb[0]-dd].join(",")+"&bounded=1"}
-        const r=await fetch(url),j=await r.json();
-        const c=(Array.isArray(j)?j:[]).map(x=>[+x.lat,+x.lon]).find(x=>okLL(x)&&(!nb||hav(x,nb)<40));
-        if(c){geoCache[s.query]=[+c[0].toFixed(5),+c[1].toFixed(5)];found=true;try{localStorage.setItem("eu-geo-v2",JSON.stringify(geoCache))}catch(e){}}
-      }catch(e){}
-      await new Promise(res=>setTimeout(res,1100));
+      const q=String(s.query||s.name||""),head=q.split(",")[0].trim(),tail=q.split(",").slice(1).join(",").trim();
+      const city=nearestCity(nb),w=t=>city&&!t.toLowerCase().includes(city.toLowerCase())?t+" "+city:t;   // 모든 검색어에 도시 이름을 붙임
+      const tries=[...new Set([GEOQ[s.query],q,w(q),head+(tail?" "+tail:""),w(head),w(String(s.name||""))].filter(Boolean))];   // 검색어를 바꿔가며 시도
+      for(const t of tries){
+        const c=await geoSearch(t,nb);await sleep(1100);
+        if(c){geoCache[s.query]=[+c[0].toFixed(5),+c[1].toFixed(5)];found=true;try{localStorage.setItem("eu-geo-v2",JSON.stringify(geoCache))}catch(e){}break}
+      }
     }
   }finally{geoBusy=false}
   if(found)drawMap();
@@ -258,6 +277,7 @@ function drawPins(){   // 겹치는 핀은 화면에서 서로 안 가리게 벌
   pinLayer.clearLayers();
   const items=[],hotels=[];
   lastPts.forEach(p=>{
+    if(p.approx){items.push({p,hotel:false});return}
     if(isHotelStop(p.s)){   // 같은 숙소(이름이 같거나 150m 안)는 핀 하나로 합침
       const nm=String(p.s.name||"").replace(/\s+/g,"").toLowerCase();
       if(hotels.some(h=>h.nm===nm||hav(h.c,p.c)<0.15))return;
@@ -277,9 +297,9 @@ function drawPins(){   // 겹치는 핀은 화면에서 서로 안 가리게 벌
       L.circleMarker(p.c,{radius:3,color:"#fff",weight:1.5,fillColor:"#334155",fillOpacity:1}).addTo(pinLayer);
     }
     const ic=it.hotel?L.divIcon({className:"",html:PIN_SVG,iconSize:[30,40],iconAnchor:[15,38]})
-                     :L.divIcon({className:"",html:'<div class="lm">'+(p.i+1)+'</div>',iconSize:[30,30],iconAnchor:[15,15]});
+                     :L.divIcon({className:"",html:'<div class="lm'+(p.approx?' q':'')+'">'+(p.i+1)+'</div>',iconSize:[30,30],iconAnchor:[15,15]});
     const m=L.marker(at,{icon:ic,title:(it.hotel?"숙소 · ":(p.i+1)+". ")+p.s.name,zIndexOffset:(it.hotel?500:1000)+p.i}).addTo(pinLayer);
-    const tt=document.createElement("span");tt.textContent=(it.hotel?"🏨 ":"")+p.s.name;m.bindTooltip(tt,{direction:"top",offset:[0,it.hotel?-34:-14]});
+    const tt=document.createElement("span");tt.textContent=(it.hotel?"🏨 ":"")+p.s.name+(p.approx?" (대략 위치)":"");m.bindTooltip(tt,{direction:"top",offset:[0,it.hotel?-34:-14]});
     m.on("click",()=>goStop(p.i));
   });
 }
@@ -287,7 +307,8 @@ if(LM)LM.on("zoomend",()=>drawPins());
 function drawMap(){
   const d=D(),pts=[];d.s.forEach((s,i)=>{const c=ll(s);if(c)pts.push({i,s,c})});
   const n=d.s.length,miss=n-pts.length,q=s=>encodeURIComponent(s.query||s.name);
-  $("mapnote").textContent=!n?"":!LM?"지도 라이브러리를 불러오지 못했어요. 구글 지도 버튼을 이용해 주세요.":"빨간 핀은 숙소예요. 선은 장소 사이 직선이에요. 실제 길은 구글 지도 버튼으로 확인하세요."+(miss?" 위치를 모르는 "+miss+"곳은 지도에서 빠졌어요.":"");
+  const apx=[];d.s.forEach((s,i)=>{if(ll(s))return;let nb=null;for(let k=1;k<n&&!nb;k++){nb=(d.s[i-k]&&ll(d.s[i-k]))||(d.s[i+k]&&ll(d.s[i+k]))||null}if(nb)apx.push({i,s,c:nb,approx:true})});
+  $("mapnote").textContent=!n?"":!LM?"지도 라이브러리를 불러오지 못했어요. 구글 지도 버튼을 이용해 주세요.":"빨간 핀은 숙소예요. 선은 장소 사이 직선이에요. 실제 길은 구글 지도 버튼으로 확인하세요."+(miss?" 정확한 위치를 아직 못 찾은 "+miss+"곳은 회색 핀(대략 위치)으로 표시했어요. 이름으로 계속 찾는 중이에요.":"");
   const gl=$("glinks");gl.textContent="";
   if(n===1){const a=document.createElement("a");a.className="ib";a.target="_blank";a.rel="noopener";a.href="https://www.google.com/maps/search/?api=1&query="+q(d.s[0]);a.textContent="구글 지도에서 열기";gl.append(a)}
   for(let a0=0;a0<n-1;a0+=9){const ch=d.s.slice(a0,a0+10),a=document.createElement("a");a.className="ib";a.target="_blank";a.rel="noopener";
@@ -299,7 +320,7 @@ function drawMap(){
   const ls=pts.map(p=>p.c);
   L.polyline(ls,{color:"#ffffff",weight:8,opacity:.9}).addTo(lmLayer);
   L.polyline(ls,{color:"#1d4ed8",weight:4,opacity:.95,dashArray:"2 9",lineCap:"round"}).addTo(lmLayer);
-  lastPts=pts;
+  lastPts=pts.concat(apx).sort((x,y)=>x.i-y.i);
   if(ls.length===1)LM.setView(ls[0],15);else LM.fitBounds(L.latLngBounds(ls),{padding:[40,40],maxZoom:16});
   drawPins();
 }
