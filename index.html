@@ -23,7 +23,7 @@ header{padding:18px 20px 6px}h1{margin:0;font-size:21px}header p{margin:2px 0 0;
 .rail button.on{background:var(--acc);color:var(--card);font-weight:700}.rail small{opacity:.7}
 .main{padding:16px}.main h2{margin:0 0 12px;font-size:18px}
 .tabs{display:flex;gap:6px;margin-bottom:14px}.tabs button{font:inherit;font-size:14px;font-weight:700;padding:8px 14px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}.tabs button.on{background:var(--acc);color:var(--card);border-color:var(--acc)}
-.mapbox{margin:0 0 16px;display:grid;gap:6px}#lmap{width:100%;height:340px;border-radius:10px;z-index:0;background:var(--acc2)}.mapnote{margin:0;font-size:12px;color:var(--mut)}
+.mapbox{margin:0 0 16px;display:grid;gap:6px}#lmap{width:100%;height:480px;border-radius:10px;z-index:0;background:var(--acc2)}.mapnote{margin:0;font-size:12px;color:var(--mut)}
 .lm{width:30px;height:30px;border-radius:50%;background:#1d4ed8;color:#fff;border:3px solid #fff;font:800 14px/24px "IBM Plex Sans KR",sans-serif;text-align:center;box-shadow:0 0 0 1.5px #0f172a,0 3px 8px rgba(0,0,0,.55)}.lm.f{background:#ea580c}.lm.e{background:#dc2626}
 ol.stops{list-style:none;margin:0;padding:0 0 0 18px;border-left:3px solid var(--acc2)}
 .stop{position:relative;padding:8px 0 10px 14px}
@@ -50,7 +50,7 @@ input[type=text],input[type=password],input[type=number],input[type=time],textar
 .attrow{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.att{display:inline-flex;gap:4px;align-items:center;font-size:12px;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:2px 4px 2px 10px;max-width:100%}.att button{border:0;background:none;color:var(--mut);cursor:pointer;font:inherit;padding:0 4px}
 .hint2{font-size:12px;color:var(--mut);margin:0}
 [hidden]{display:none!important}
-@media(max-width:960px){.app{grid-template-columns:1fr;padding:10px}.rail{display:flex;max-height:none;position:static;overflow-x:auto}.rail button{width:auto;white-space:nowrap;gap:6px}.aip{position:static}#lmap{height:280px}}
+@media(max-width:960px){.app{grid-template-columns:1fr;padding:10px}.rail{display:flex;max-height:none;position:static;overflow-x:auto}.rail button{width:auto;white-space:nowrap;gap:6px}.aip{position:static}#lmap{height:380px}}
 </style></head><body>
 <header><h1>2026-2027 유럽 27일 플래너</h1><p>12/12 출발 · 1/7 귀국 · 일정을 직접 고치거나 AI에게 바꿔달라고 하세요.</p>
 <div class="toolbar" id="toolbar" hidden><span id="synced">불러오는 중…</span><button class="lb" id="refresh" type="button">새로고침</button><button class="lb" id="forget" type="button">비밀번호 지우기</button></div></header>
@@ -241,6 +241,31 @@ if(typeof L!=="undefined"){
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"&copy; OpenStreetMap"}).addTo(LM);
   lmLayer=L.layerGroup().addTo(LM);
 }
+let lastPts=[],pinLayer=null;
+function drawPins(){   // 겹치는 핀을 화면에서 서로 안 가리게 벌려서 표시 (원래 위치는 작은 점+가는 선)
+  if(!LM)return;
+  if(!pinLayer)pinLayer=L.layerGroup().addTo(LM);
+  pinLayer.clearLayers();
+  const pts=lastPts;if(!pts.length)return;
+  const R=31,placed=[],last=pts.length-1;
+  const ring=[[0,0]];for(let r=1;r<=8;r++){const k=6+r*3;for(let j=0;j<k;j++){const t=2*Math.PI*j/k-Math.PI/2;ring.push([Math.cos(t)*R*r*.9,Math.sin(t)*R*r*.9])}}
+  pts.forEach((p,pi)=>{
+    const base=LM.latLngToContainerPoint(p.c);let pos=base;
+    for(const [dx,dy] of ring){const q=L.point(base.x+dx,base.y+dy);if(placed.every(o=>o.distanceTo(q)>=R)){pos=q;break}}
+    placed.push(pos);
+    const moved=pos.distanceTo(base)>2,at=moved?LM.containerPointToLatLng(pos):p.c;
+    if(moved){
+      L.polyline([p.c,at],{color:"#334155",weight:1.5,opacity:.8}).addTo(pinLayer);
+      L.circleMarker(p.c,{radius:3,color:"#fff",weight:1.5,fillColor:"#334155",fillOpacity:1}).addTo(pinLayer);
+    }
+    const cls="lm"+(p.i===0?" f":pi===last?" e":"");
+    const ic=L.divIcon({className:"",html:'<div class="'+cls+'">'+(p.i+1)+'</div>',iconSize:[30,30],iconAnchor:[15,15]});
+    const m=L.marker(at,{icon:ic,title:(p.i+1)+". "+p.s.name,zIndexOffset:1000+p.i}).addTo(pinLayer);
+    const tt=document.createElement("span");tt.textContent=p.s.name;m.bindTooltip(tt,{direction:"top",offset:[0,-14]});
+    m.on("click",()=>goStop(p.i));
+  });
+}
+if(LM)LM.on("zoomend",()=>drawPins());
 function drawMap(){
   const d=D(),pts=[];d.s.forEach((s,i)=>{const c=ll(s);if(c)pts.push({i,s,c})});
   const n=d.s.length,miss=n-pts.length,q=s=>encodeURIComponent(s.query||s.name);
@@ -256,16 +281,9 @@ function drawMap(){
   const ls=pts.map(p=>p.c);
   L.polyline(ls,{color:"#ffffff",weight:8,opacity:.9}).addTo(lmLayer);
   L.polyline(ls,{color:"#1d4ed8",weight:4,opacity:.95,dashArray:"2 9",lineCap:"round"}).addTo(lmLayer);
-  const seen={};
-  pts.forEach((p,pi)=>{
-    const key=p.c[0].toFixed(3)+","+p.c[1].toFixed(3),k=seen[key]=(seen[key]||0)+1,off=(k-1)*20;  // 같은 자리에 겹치면 옆으로 펼침
-    const cls="lm"+(p.i===0?" f":pi===pts.length-1?" e":"");
-    const ic=L.divIcon({className:"",html:'<div class="'+cls+'">'+(p.i+1)+'</div>',iconSize:[30,30],iconAnchor:[15-off,15]});
-    const m=L.marker(p.c,{icon:ic,title:(p.i+1)+". "+p.s.name,zIndexOffset:1000+p.i}).addTo(lmLayer);
-    const tt=document.createElement("span");tt.textContent=p.s.name;m.bindTooltip(tt,{direction:"top",offset:[0,-12]});
-    m.on("click",()=>goStop(p.i));
-  });
-  if(ls.length===1)LM.setView(ls[0],15);else LM.fitBounds(L.latLngBounds(ls),{padding:[30,30],maxZoom:16});
+  lastPts=pts;
+  if(ls.length===1)LM.setView(ls[0],15);else LM.fitBounds(L.latLngBounds(ls),{padding:[40,40],maxZoom:16});
+  drawPins();
 }
 
 /* ---------- AI (through Apps Script) ---------- */
