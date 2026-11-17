@@ -33,6 +33,7 @@ ol.stops{list-style:none;margin:0;padding:0 0 0 18px;border-left:3px solid var(-
 .sn{font-weight:700}.tm{font-size:12px;font-weight:700;color:var(--acc);font-variant-numeric:tabular-nums}.row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .stop input.memo{width:100%;border:0;border-bottom:1px dashed var(--line);background:none;color:var(--mut);font:inherit;font-size:13px;padding:2px 0}
 .ib{font:inherit;font-size:12px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:7px;padding:2px 8px;cursor:pointer;text-decoration:none}
+.sh{margin:22px 0 4px;font-size:16px}.sights{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:8px}.sc{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--card);display:grid;align-content:start}.sc .ph{aspect-ratio:4/3;background:var(--acc2) center/cover no-repeat}.sc .bd{padding:8px;display:grid;gap:5px}.sc b{font-size:14px}.sc small{color:var(--mut);font-size:12px;line-height:1.35}.sc .btn{font-size:13px;padding:6px 8px}
 .add{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}.add input{flex:1 1 140px}
 input[type=text],input[type=password],input[type=number],input[type=time],textarea,select{font:inherit;font-size:14px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0;width:100%}
 .add input[type=number]{flex:0 1 160px}
@@ -65,7 +66,8 @@ input[type=text],input[type=password],input[type=number],input[type=time],textar
 <div class="mapbox"><div id="lmap"></div><div class="row" id="glinks"></div><p class="mapnote" id="mapnote"></p></div>
 <ol class="stops" id="stops"></ol>
 <form class="add" id="addf"><input type="text" id="an" placeholder="장소 이름 (예: 바티칸 박물관)" required><input type="text" id="aq" placeholder="구글맵 검색어 (예: Vatican Museums, Rome)"><input type="number" id="apos" min="1" inputmode="numeric" placeholder="몇 번째로? (빈칸=맨 뒤)"><button class="btn" type="submit">장소 추가</button></form>
-<p class="row" style="margin:14px 0 0"><button class="btn ghost" id="undo" type="button">되돌리기</button><button class="btn ghost" id="optbtn" type="button">🧭 숙소 기준 최적 동선</button></p><div class="pp" id="optbox" hidden style="margin-top:12px"></div></div>
+<p class="row" style="margin:14px 0 0"><button class="btn ghost" id="undo" type="button">되돌리기</button><button class="btn ghost" id="optbtn" type="button">🧭 숙소 기준 최적 동선</button></p><div class="pp" id="optbox" hidden style="margin-top:12px"></div>
+<h3 id="sightsh" class="sh" hidden></h3><div class="sights" id="sights"></div></div>
 </section>
 </div>
 
@@ -248,7 +250,7 @@ function render(){
     r.append(btn("↑",()=>mv(i,-1),"위로"),btn("↓",()=>mv(i,1),"아래로"),btn("삭제",()=>{snap();d.s.splice(i,1);save();render()}));
     const m=document.createElement("input");m.className="memo";m.type="text";m.value=s.memo||"";m.placeholder="메모";m.setAttribute("aria-label","메모");m.onchange=()=>{snap();s.memo=m.value;save()};
     li.append(r,m);ol.append(li)});
-  $("optbox").hidden=true;$("undo").disabled=!undo.length;drawMap();
+  $("optbox").hidden=true;$("undo").disabled=!undo.length;drawMap();renderSights();
 }
 $("addf").onsubmit=e=>{e.preventDefault();const n=$("an").value.trim();if(!n)return;snap();
   const arr=D().s,p=parseInt($("apos").value,10);
@@ -402,6 +404,44 @@ $("optbtn").onclick=()=>{
   const no=document.createElement("button");no.type="button";no.className="btn ghost";no.textContent="바꾸지 않기";no.onclick=()=>{box.hidden=true};
   row.append(ok,no);box.append(h,sm,ol,note,row);
 };
+
+/* ---------- 도시별 주요 관광지 (사진은 위키백과에서 불러옴) ---------- */
+const SC={Rome:[41.9,12.49,"로마"],Florence:[43.77,11.25,"피렌체"],Venice:[45.44,12.32,"베네치아"],Lucerne:[47.05,8.31,"루체른"],Strasbourg:[48.58,7.75,"스트라스부르"],Paris:[48.86,2.35,"파리"],Barcelona:[41.39,2.17,"바르셀로나"],Porto:[41.15,-8.61,"포르투"],Lisbon:[38.72,-9.14,"리스본"],Seville:[37.39,-5.99,"세비야"],Granada:[37.18,-3.6,"그라나다"],Madrid:[40.42,-3.7,"마드리드"]};
+const SIGHTS={
+Rome:[["콜로세움","Colosseum","Colosseum","로마 제국의 원형 경기장. 통합권으로 포로 로마노·팔라티노와 함께"],["판테온","Pantheon","Pantheon, Rome","2천 년 된 돔 신전. 천장의 구멍으로 빛이 들어와요"],["트레비 분수","Trevi Fountain","Trevi Fountain","동전을 던지면 로마에 다시 온다는 분수"],["스페인 광장","Piazza di Spagna","Spanish Steps","계단에 앉아 쉬는 로마의 명소"],["바티칸 박물관","Vatican Museums","Vatican Museums","시스티나 성당과 라파엘로의 방. 사전 예약 필수"],["성 베드로 대성당","St. Peter's Basilica","St. Peter's Basilica","세계에서 가장 큰 성당. 쿠폴라 전망대"],["포로 로마노","Roman Forum","Roman Forum","고대 로마의 중심 광장 유적"],["나보나 광장","Piazza Navona","Piazza Navona","분수와 거리 공연이 있는 바로크 광장"],["진실의 입","Bocca della Verità","Bocca della Verità","영화 '로마의 휴일'로 유명한 조각"],["산탄젤로 성","Castel Sant'Angelo","Castel Sant'Angelo","테베레 강변의 성. 일몰 전망"],["트라스테베레","Trastevere","Trastevere","골목 식당이 많은 강 건너 동네"],["보르게세 미술관","Galleria Borghese","Galleria Borghese","베르니니 조각 명작. 시간 예약제"]],
+Florence:[["두오모","Cattedrale di Santa Maria del Fiore","Florence Cathedral","피렌체의 상징. 쿠폴라에 오르면 시내가 한눈에"],["베키오 다리","Ponte Vecchio","Ponte Vecchio","금세공 상점이 늘어선 중세 다리"],["우피치 미술관","Uffizi Gallery","Uffizi","보티첼리 '비너스의 탄생'이 있는 미술관"],["시뇨리아 광장","Piazza della Signoria","Piazza della Signoria","야외 조각 광장과 베키오 궁전"],["아카데미아 미술관","Galleria dell'Accademia","Galleria dell'Accademia","미켈란젤로의 다비드상"],["미켈란젤로 광장","Piazzale Michelangelo","Piazzale Michelangelo","피렌체 전경 일몰 명소"],["산타 크로체 성당","Basilica di Santa Croce","Santa Croce, Florence","미켈란젤로·갈릴레이의 묘가 있는 성당"],["보볼리 정원","Boboli Gardens","Boboli Gardens","피티 궁전 뒤편 대형 정원"]],
+Venice:[["산마르코 광장","Piazza San Marco","St Mark's Square","베네치아의 중심 광장"],["산마르코 대성당","St Mark's Basilica","St Mark's Basilica","황금 모자이크의 비잔틴 성당"],["두칼레 궁전","Doge's Palace","Doge's Palace","옛 총독의 궁전. 탄식의 다리와 연결"],["리알토 다리","Rialto Bridge","Rialto Bridge","대운하 위의 가장 오래된 다리"],["탄식의 다리","Bridge of Sighs","Bridge of Sighs","궁전과 감옥을 잇는 다리"],["부라노 섬","Burano","Burano","알록달록한 집들이 있는 섬"],["무라노 섬","Murano","Murano","유리 공예로 유명한 섬"],["산타 마리아 델라 살루테 성당","Santa Maria della Salute","Santa Maria della Salute","대운하 입구의 바로크 성당"]],
+Lucerne:[["카펠교","Chapel Bridge","Chapel Bridge","루체른의 상징인 목조 지붕 다리"],["빈사의 사자상","Lion Monument","Lion Monument","바위에 새긴 거대한 사자 조각"],["빙하 공원","Glacier Garden Lucerne","Gletschergarten Luzern","빙하기 흔적을 볼 수 있는 공원"],["무제크 성벽","Museggmauer","Museggmauer","도시를 내려다보는 중세 성벽과 탑"],["리기산","Mount Rigi","Rigi","산악 열차로 오르는 '산의 여왕'"],["필라투스산","Mount Pilatus","Pilatus","케이블카와 톱니바퀴 열차 전망"],["슈프로이어 다리","Spreuer Bridge","Spreuer Bridge","죽음의 춤 그림이 있는 목조 다리"],["스위스 교통박물관","Swiss Museum of Transport","Swiss Museum of Transport","기차·비행기·자동차 전시"]],
+Strasbourg:[["스트라스부르 대성당","Cathédrale Notre-Dame de Strasbourg","Strasbourg Cathedral","붉은 사암의 고딕 대성당"],["쁘띠 프랑스","La Petite France","Petite France, Strasbourg","운하와 목골 건물이 있는 동네"],["클레베르 광장","Place Kléber","Place Kléber","시내 중심 광장. 크리스마스 트리가 서는 곳"],["로앙 궁전","Palais Rohan","Palais Rohan","박물관 3곳이 있는 18세기 궁전"],["바방 댐","Barrage Vauban","Barrage Vauban","옥상 전망대에서 쁘띠 프랑스가 한눈에"],["덮개 다리","Ponts Couverts","Ponts Couverts","운하 위 중세 다리와 탑 4개"],["오랑주리 공원","Parc de l'Orangerie","Parc de l'Orangerie","황새가 있는 시민 공원"]],
+Paris:[["에펠탑","Eiffel Tower","Eiffel Tower","파리의 상징. 전망대와 야경"],["루브르 박물관","Louvre Museum","Louvre","모나리자와 밀로의 비너스"],["노트르담 대성당","Notre-Dame de Paris","Notre-Dame de Paris","시테 섬의 고딕 대성당"],["개선문","Arc de Triomphe","Arc de Triomphe","샹젤리제 끝의 전승 기념문. 옥상 전망"],["오르세 미술관","Musée d'Orsay","Musée d'Orsay","옛 기차역에 있는 인상파 미술관"],["사크레쾨르 대성당","Sacré-Cœur","Sacré-Cœur, Paris","몽마르트르 언덕의 하얀 성당"],["생트샤펠","Sainte-Chapelle","Sainte-Chapelle","스테인드글라스가 압도적인 예배당"],["팡테옹","Panthéon","Panthéon, Paris","위인들이 잠든 신고전주의 건물"],["뤽상부르 공원","Jardin du Luxembourg","Luxembourg Garden","파리 시민이 쉬는 정원"],["오랑주리 미술관","Musée de l'Orangerie","Musée de l'Orangerie","모네의 수련 연작"],["퐁피두 센터","Centre Pompidou","Centre Pompidou","현대미술관. 옥상 전망"],["베르사유 궁전","Palace of Versailles","Palace of Versailles","거울의 방이 있는 궁전"]],
+Barcelona:[["사그라다 파밀리아","Sagrada Família","Sagrada Família","가우디의 미완성 대성당. 사전 예약"],["구엘 공원","Park Güell","Park Güell","가우디의 모자이크 공원"],["카사 바트요","Casa Batlló","Casa Batlló","바다를 닮은 가우디의 집"],["카사 밀라","Casa Milà","Casa Milà","물결 모양 외관의 옥상"],["보케리아 시장","Mercat de la Boqueria","La Boqueria","람블라스 거리의 먹거리 시장"],["고딕 지구와 대성당","Barcelona Cathedral","Barcelona Cathedral","중세 골목이 이어지는 구시가"],["몬주익 성","Montjuïc Castle","Montjuïc Castle","바다가 보이는 언덕 위 성"],["피카소 미술관","Museu Picasso","Picasso Museum","피카소 초기작을 모은 미술관"]],
+Porto:[["렐루 서점","Livraria Lello","Livraria Lello","세계에서 아름다운 서점. 사전 예약"],["상 벤투 역","São Bento Railway Station","São Bento railway station","아줄레주 벽화가 있는 기차역"],["클레리구스 탑","Torre dos Clérigos","Clérigos Church","포르투 전경을 보는 종탑"],["동 루이스 1세 다리","Dom Luís I Bridge","Dom Luís I Bridge","도우루 강 위의 2층 철교"],["히베이라 지구","Ribeira","Ribeira, Porto","강변의 알록달록한 구시가"],["볼사 궁전","Palácio da Bolsa","Palácio da Bolsa","아랍의 방으로 유명한 옛 증권거래소"],["포르투 대성당","Porto Cathedral","Porto Cathedral","언덕 위의 로마네스크 성당"],["볼량 시장","Mercado do Bolhão","Mercado do Bolhão","재래시장"]],
+Lisbon:[["벨렘 탑","Torre de Belém","Belém Tower","테주 강변의 마누엘 양식 탑"],["제로니무스 수도원","Mosteiro dos Jerónimos","Jerónimos Monastery","대항해시대 기념 수도원"],["상 조르제 성","Castelo de São Jorge","São Jorge Castle","언덕 위 성채. 시내 전망"],["알파마","Alfama","Alfama","파두가 들리는 골목 동네"],["코메르시우 광장","Praça do Comércio","Praça do Comércio","강변의 대형 광장. 새해 불꽃놀이"],["산타 주스타 엘리베이터","Elevador de Santa Justa","Santa Justa Lift","철제 엘리베이터 전망대"],["리스본 대성당","Sé de Lisboa","Lisbon Cathedral","28번 트램이 지나는 성당"],["파스테이스 드 벨렘","Pastéis de Belém","Pastéis de Belém","원조 에그타르트 가게"]],
+Seville:[["세비야 알카사르","Real Alcázar de Sevilla","Alcázar of Seville","무데하르 양식 궁전과 정원"],["세비야 대성당","Catedral de Sevilla","Seville Cathedral","히랄다 탑이 있는 세계 3대 성당"],["스페인 광장","Plaza de España","Plaza de España, Seville","반원형 건물과 운하"],["황금의 탑","Torre del Oro","Torre del Oro","과달키비르 강변의 탑"],["메트로폴 파라솔","Metropol Parasol","Metropol Parasol","거대한 나무 구조물 전망대"],["산타 크루스 지구","Barrio de Santa Cruz","Barrio Santa Cruz, Seville","옛 유대인 골목"],["마리아 루이사 공원","Parque de María Luisa","Parque de María Luisa","스페인 광장 옆 공원"],["필라토의 집","Casa de Pilatos","Casa de Pilatos","안달루시아 양식 궁전"]],
+Granada:[["알함브라","Alhambra","Alhambra","이슬람 왕조의 궁전 단지. 사전 예약 필수"],["나스르 궁전","Nasrid Palaces","Nasrid palaces","알함브라의 핵심. 입장 시간 엄수"],["헤네랄리페","Generalife","Generalife","알함브라 옆 여름 별궁과 정원"],["알바이신 지구","Albaicín","Albaicín","하얀 집이 이어진 구시가"],["산 니콜라스 전망대","Mirador de San Nicolás","Mirador de San Nicolás","알함브라가 보이는 일몰 명소"],["그라나다 대성당","Catedral de Granada","Granada Cathedral","스페인 르네상스 성당"],["사크로몬테","Sacromonte","Sacromonte, Granada","동굴 집과 플라멩코"],["알카이세리아","Alcaicería","Alcaicería","옛 비단 시장 골목"]],
+Madrid:[["프라도 미술관","Museo del Prado","Prado Museum","벨라스케스·고야의 명작. 무료 시간대 있음"],["마드리드 왕궁","Palacio Real de Madrid","Royal Palace of Madrid","화려한 왕궁"],["레티로 공원","Parque del Retiro","Buen Retiro Park","호수와 유리 궁전이 있는 공원"],["마요르 광장","Plaza Mayor","Plaza Mayor, Madrid","아케이드로 둘러싸인 광장"],["푸에르타 델 솔","Puerta del Sol","Puerta del Sol","스페인의 중심 0km 표지"],["레이나 소피아 미술관","Museo Reina Sofía","Museo Reina Sofía","피카소 '게르니카'"],["그란 비아","Gran Vía","Gran Vía, Madrid","쇼핑과 건축 거리"],["산 미구엘 시장","Mercado de San Miguel","Mercado de San Miguel","타파스 시장"]]};
+const sightCity=d=>{const pts=d.s.map(x=>ll(x)).filter(Boolean);let b="",bn=0;for(const k in SC){const n=pts.filter(c=>hav(c,SC[k])<40).length;if(n>bn){bn=n;b=k}}return b};
+let imgCache={};try{imgCache=JSON.parse(localStorage.getItem("eu-img-v1")||"{}")||{}}catch(e){}
+async function wikiImg(title){
+  if(title in imgCache)return imgCache[title];
+  let u="";try{const j=await (await fetch("https://en.wikipedia.org/api/rest_v1/page/summary/"+encodeURIComponent(title.replace(/ /g,"_")))).json();u=(j&&j.thumbnail&&j.thumbnail.source)||""}catch(e){return ""}
+  imgCache[title]=u;try{localStorage.setItem("eu-img-v1",JSON.stringify(imgCache))}catch(e){}return u;
+}
+function renderSights(){
+  const box=$("sights");if(!box)return;box.textContent="";const d=D(),city=sightCity(d),list=SIGHTS[city];
+  $("sightsh").hidden=!list;if(!list)return;$("sightsh").textContent=SC[city][2]+" 주요 관광지 · 눌러서 이 날 일정에 추가";
+  list.forEach(([ko,en,wiki,desc])=>{
+    const has=d.s.some(x=>x.name===ko||x.query===en+", "+SC[city][2]||(x.query||"").toLowerCase().startsWith(en.toLowerCase()));
+    const c=document.createElement("div");c.className="sc";
+    const ph=document.createElement("div");ph.className="ph";ph.setAttribute("role","img");ph.setAttribute("aria-label",ko);c.append(ph);
+    wikiImg(wiki).then(u=>{if(u)ph.style.backgroundImage='url("'+u+'")'});
+    const bd=document.createElement("div");bd.className="bd";
+    const b=document.createElement("b");b.textContent=ko;const sm=document.createElement("small");sm.textContent=desc;
+    const bt=document.createElement("button");bt.type="button";bt.className=has?"btn ghost":"btn";bt.disabled=has;bt.textContent=has?"이미 일정에 있어요":"＋ 일정에 추가";
+    bt.onclick=()=>{snap();const st={name:ko,query:en+", "+({Rome:"Rome",Florence:"Florence",Venice:"Venice",Lucerne:"Lucerne",Strasbourg:"Strasbourg",Paris:"Paris",Barcelona:"Barcelona",Porto:"Porto",Lisbon:"Lisbon",Seville:"Seville",Granada:"Granada",Madrid:"Madrid"}[city]),memo:desc};
+      const a=d.s,last=a[a.length-1];if(a.length>1&&last&&isL(last))a.splice(a.length-1,0,st);else a.push(st);save();render()};
+    bd.append(b,sm,bt);c.append(bd);box.append(c)});
+}
 
 render();
 const saved=storeGet();if(saved)unlock(saved);
