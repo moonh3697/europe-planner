@@ -95,7 +95,7 @@ const clone=o=>JSON.parse(JSON.stringify(o));
 let geoCache={};try{geoCache=JSON.parse(localStorage.getItem("eu-geo-v2")||"{}")||{};localStorage.removeItem("eu-geo-v1")}catch(e){}
 const GEOQ={"TOC Hostel Sevilla":"Calle Miguel Mañara 18, Sevilla, Spain","TOC Hostel Granada":"Placeta de Castillejos 1, Granada, Spain"};
 const okLL=c=>Array.isArray(c)&&c.length===2&&isFinite(c[0])&&isFinite(c[1])&&c[0]>=33&&c[0]<=62&&c[1]>=-13&&c[1]<=32;   // 유럽 범위 밖 좌표는 잘못된 값으로 보고 무시
-const ll=s=>okLL(s.ll)?s.ll:(COORDS[s.query]||(okLL(geoCache[s.query])?geoCache[s.query]:null));
+const ll=s=>COORDS[s.query]||(okLL(s.ll)?s.ll:null)||(okLL(geoCache[s.query])?geoCache[s.query]:null);
 const geoTried=new Set();let geoBusy=false;
 const CITYPT={"Rome":[41.9,12.49],"Florence":[43.77,11.25],"Venice":[45.44,12.32],"Lucerne":[47.05,8.31],"Strasbourg":[48.58,7.75],"Paris":[48.86,2.35],"Barcelona":[41.39,2.17],"Porto":[41.15,-8.61],"Lisbon":[38.72,-9.14],"Seville":[37.39,-5.99],"Granada":[37.18,-3.6],"Madrid":[40.42,-3.7],"Ronda":[36.74,-5.17],"Rennes":[48.11,-1.67],"Versailles":[48.8,2.12],"Mont-Saint-Michel":[48.64,-1.51]};
 const nearestCity=nb=>{if(!nb)return "";let best="",bd=60;for(const k in CITYPT){const d=hav(nb,CITYPT[k]);if(d<bd){bd=d;best=k}}return best};   // 앞뒤 장소 기준 가장 가까운 도시(60km 이내)
@@ -117,26 +117,33 @@ async function geoSearch(text,nb){   // 한 가지 검색어로 찾기: Nominati
   }catch(e){}
   return null;
 }
-async function geocodeMissing(){   // 좌표가 없는 장소를 지명으로 찾아 지도에 표시 (같은 날 앞뒤 장소 근처에서만, 한 번 찾으면 기기에 저장)
-  if(geoBusy)return;geoBusy=true;let found=false;
+async function geocodeMissing(){   // 좌표가 없거나 수상한 장소를 지명으로 찾아 일정에 함께 저장(친구들 화면에도 보임)
+  if(geoBusy)return;geoBusy=true;let found=false,changed=false;
   try{
+    const near=(d,i,dir)=>{for(let k=i+dir;k>=0&&k<d.s.length;k+=dir){const c=ll(d.s[k]);if(c&&!d.s[k].__bad)return c}return null};
+    days.forEach(d=>d.s.forEach((s,i)=>{   // 앞뒤 장소와 모두 80km 넘게 떨어진 직접 입력 좌표는 AI가 잘못 준 값으로 보고 지움
+      if(!s.ll||COORDS[s.query])return;const pv=near(d,i,-1),nx=near(d,i,1);
+      if((pv||nx)&&(!pv||hav(s.ll,pv)>80)&&(!nx||hav(s.ll,nx)>80)){delete s.ll;changed=true}
+    }));
     const jobs=[];
     days.forEach(d=>d.s.forEach((s,i)=>{
       if(ll(s)||geoTried.has(s.query))return;geoTried.add(s.query);
-      let nb=null;for(let k=1;k<d.s.length&&!nb;k++){nb=(d.s[i-k]&&ll(d.s[i-k]))||(d.s[i+k]&&ll(d.s[i+k]))||null}
-      jobs.push({s,nb});
+      jobs.push({s,nb:near(d,i,-1)||near(d,i,1)});
     }));
     for(const {s,nb} of jobs){
       const q=String(s.query||s.name||""),head=q.split(",")[0].trim(),tail=q.split(",").slice(1).join(",").trim();
       const city=nearestCity(nb),w=t=>city&&!t.toLowerCase().includes(city.toLowerCase())?t+" "+city:t;   // 모든 검색어에 도시 이름을 붙임
-      const tries=[...new Set([GEOQ[s.query],q,w(q),head+(tail?" "+tail:""),w(head),w(String(s.name||""))].filter(Boolean))];   // 검색어를 바꿔가며 시도
+      const tries=[...new Set([GEOQ[s.query],q,w(q),head+(tail?" "+tail:""),w(head),w(String(s.name||""))].filter(Boolean))];
       for(const t of tries){
         const c=await geoSearch(t,nb);await sleep(1100);
-        if(c){geoCache[s.query]=[+c[0].toFixed(5),+c[1].toFixed(5)];found=true;try{localStorage.setItem("eu-geo-v2",JSON.stringify(geoCache))}catch(e){}break}
+        if(c){const v=[+c[0].toFixed(5),+c[1].toFixed(5)];geoCache[s.query]=v;
+          days.forEach(d=>d.s.forEach(x=>{if(x.query===s.query&&!x.ll&&!COORDS[x.query]){x.ll=v}}));   // 일정에 저장 → 모두에게 공유
+          found=true;changed=true;try{localStorage.setItem("eu-geo-v2",JSON.stringify(geoCache))}catch(e){}break}
       }
     }
   }finally{geoBusy=false}
-  if(found)drawMap();
+  if(changed)save();
+  if(found||changed)drawMap();
 }
 const fromOrig=()=>ORIG.map(d=>({n:d.n,l:d.l,s:d.s.map(([name,query,memo])=>({name,query,memo}))}));
 function hav(a,b){const R=6371,r=x=>x*Math.PI/180,dl=r(b[0]-a[0]),dg=r(b[1]-a[1]),h=Math.sin(dl/2)**2+Math.cos(r(a[0]))*Math.cos(r(b[0]))*Math.sin(dg/2)**2;return 2*R*Math.asin(Math.sqrt(h))}
@@ -253,9 +260,12 @@ function render(){
   $("optbox").hidden=true;$("undo").disabled=!undo.length;drawMap();syncPlanDay();
 }
 $("addf").onsubmit=e=>{e.preventDefault();const n=$("an").value.trim();if(!n)return;snap();
-  const st={name:n,query:$("aq").value.trim()||n,memo:""},arr=D().s,p=parseInt($("apos").value,10);
+  const arr=D().s,p=parseInt($("apos").value,10);
+  let qy=$("aq").value.trim();
+  if(!qy){const nbc=arr.map(x=>ll(x)).filter(Boolean).pop(),city=nearestCity(nbc);qy=city?n+", "+city:n}   // 검색어를 안 쓰면 "이름, 도시"로 자동 구성
+  const st={name:n,query:qy,memo:""};
   if(p>=1&&p<=arr.length)arr.splice(p-1,0,st);else arr.push(st);
-  $("an").value="";$("aq").value="";$("apos").value="";save();render()};
+  $("an").value="";$("aq").value="";$("apos").value="";save();render();setTimeout(()=>{try{drawMap()}catch(e){}},50)};
 $("undo").onclick=()=>{const p=undo.pop();if(p){days=JSON.parse(p);save();render()}};
 
 document.querySelectorAll("#chips button").forEach(b=>b.onclick=()=>{$("req").value=b.textContent;$("req").focus()});
