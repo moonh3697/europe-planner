@@ -16,7 +16,7 @@ header{padding:18px 20px 6px}h1{margin:0;font-size:21px}header p{margin:2px 0 0;
 .lock{max-width:460px;margin:40px auto;padding:22px;display:grid;gap:12px}.lock h2{margin:0}.lock p{margin:0;color:var(--mut);font-size:14px}
 .lock form{display:flex;gap:8px;flex-wrap:wrap}.lock input{flex:1 1 180px}.hint{background:var(--bg);border-radius:8px;padding:8px 12px;color:var(--ink)!important}
 .msg{font-size:14px}.msg.err{color:var(--err)}
-.app{display:grid;grid-template-columns:200px minmax(0,1fr) 340px;gap:14px;padding:12px 20px 40px;align-items:start}
+.app{display:grid;grid-template-columns:200px minmax(0,1fr);gap:14px;padding:12px 20px 40px;align-items:start}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px}
 .rail{padding:6px;max-height:80vh;overflow:auto;position:sticky;top:8px}
 .rail button{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;font:inherit;font-size:13px;text-align:left;padding:7px 10px;border:0;background:none;color:var(--ink);border-radius:8px;cursor:pointer}
@@ -52,7 +52,7 @@ input[type=text],input[type=password],input[type=number],input[type=time],textar
 [hidden]{display:none!important}
 @media(max-width:960px){.app{grid-template-columns:1fr;padding:10px}.rail{display:flex;max-height:none;position:static;overflow-x:auto}.rail button{width:auto;white-space:nowrap;gap:6px}.aip{position:static}#lmap{height:380px}}
 </style></head><body>
-<header><h1>2026-2027 유럽 27일 플래너</h1><p>12/12 출발 · 1/7 귀국 · 일정을 직접 고치거나 AI에게 바꿔달라고 하세요.</p>
+<header><h1>2026-2027 유럽 27일 플래너</h1><p>12/12 출발 · 1/7 귀국 · 일정은 아래 버튼으로 직접 고칠 수 있어요.</p>
 <div class="toolbar" id="toolbar" hidden><span id="synced">불러오는 중…</span><button class="lb" id="refresh" type="button">새로고침</button><button class="lb" id="forget" type="button">비밀번호 지우기</button></div></header>
 
 <section class="card lock" id="lock"><h2>비밀번호를 넣어 주세요</h2><p>일행끼리 정한 비밀번호를 넣으면 일정이 보여요. 한 번 넣으면 이 기기에서는 다시 묻지 않아요.</p>
@@ -61,27 +61,12 @@ input[type=text],input[type=password],input[type=number],input[type=time],textar
 
 <div class="app" id="app" hidden>
 <nav class="card rail" id="rail" aria-label="일차 선택"></nav>
-<section class="card main"><div class="tabs"><button type="button" id="tb-day" class="on">일정·지도</button><button type="button" id="tb-plan">하루 다시 짜기</button></div>
-<div id="v-day"><h2 id="dh"></h2>
+<section class="card main"><div id="v-day"><h2 id="dh"></h2>
 <div class="mapbox"><div id="lmap"></div><div class="row" id="glinks"></div><p class="mapnote" id="mapnote"></p></div>
 <ol class="stops" id="stops"></ol>
 <form class="add" id="addf"><input type="text" id="an" placeholder="장소 이름 (예: 바티칸 박물관)" required><input type="text" id="aq" placeholder="구글맵 검색어 (예: Vatican Museums, Rome)"><input type="number" id="apos" min="1" inputmode="numeric" placeholder="몇 번째로? (빈칸=맨 뒤)"><button class="btn" type="submit">장소 추가</button></form>
 <p class="row" style="margin:14px 0 0"><button class="btn ghost" id="undo" type="button">되돌리기</button><button class="btn ghost" id="optbtn" type="button">🧭 숙소 기준 최적 동선</button></p><div class="pp" id="optbox" hidden style="margin-top:12px"></div></div>
-<div id="v-plan" hidden><h2>하루 일정을 동선에 맞게 다시 짜기</h2>
-<form class="pf" id="pform"><div class="pg"><label>다시 짤 날<select id="pday"></select></label><label>시작 시간<input type="time" id="pst" value="09:00"></label><label>마무리 시간<input type="time" id="pen" value="21:00"></label></div>
-<div class="pg"><label>이동 방식<select id="pmode"><option>도보 중심</option><option>대중교통 중심</option><option>택시·차량 중심</option></select></label><label>일정 강도<select id="ppace"><option>보통</option><option>여유롭게</option><option>빡빡하게 (많이 보기)</option></select></label><label>새 장소<select id="pnew"><option value="no">지금 장소만 재배치</option><option value="yes">식사·카페 등 새 장소도 추가</option></select></label></div>
-<label>꼭 넣을 곳<input type="text" id="pmust" placeholder="예: 바티칸 박물관, 젤라또 가게"></label><label>빼고 싶은 곳<input type="text" id="pskip" placeholder="예: 산탄젤로 성"></label>
-<label>추가 요청<textarea id="pnote" rows="2" placeholder="예: 점심은 파스타로, 저녁 전에 숙소에서 쉬고 싶어요"></textarea></label>
-<div class="row"><button class="btn ai" id="pgo" type="submit">동선 고려해서 다시 짜기</button></div></form>
-<p id="pstatus" aria-live="polite"></p><div class="pp" id="pprev" hidden></div></div></section>
-<aside class="card aip"><h3>AI와 대화하며 일정 바꾸기</h3>
-<div class="chat" id="chat" aria-live="polite"><div class="bub a">바꾸고 싶은 일정이나 궁금한 점을 말해 주세요. 바꿀 내용을 먼저 소개하고, 확인하시면 적용할게요. 예약 확인서나 일정표 사진·텍스트 파일도 올릴 수 있어요.</div></div>
-<div class="chips" id="chips"><button type="button">이 날 일정을 여유 있게 줄여줘</button><button type="button">이 날 동선 순서를 최적화해줘</button><button type="button">점심 맛집 하나 넣어줘</button><button type="button">비 오는 날 대안으로 바꿔줘</button></div>
-<div class="attrow" id="atts" hidden></div>
-<textarea id="req" placeholder="예: 3일차가 너무 빡빡해. 바티칸에 집중하고 점심 맛집을 넣어줘 (Ctrl+Enter로 보내기)"></textarea>
-<div class="row"><button class="btn ghost" id="attbtn" type="button">📎 파일 첨부</button><input type="file" id="attach" multiple hidden accept="image/*,.jpg,.jpeg,.png,.webp,.gif,.txt,.csv,.md,.json,.tsv"><button class="btn ai" id="go" type="button">보내기</button><button class="btn ghost" id="newchat" type="button">새 대화</button></div>
-<p class="hint2">첨부는 사진(JPG·PNG·WebP·GIF)과 텍스트 파일(txt·csv·md)만 돼요. 사진은 4장까지, 자동으로 줄여서 보내요. PDF는 화면을 캡처해 사진으로 올려 주세요.</p>
-<div id="status" aria-live="polite"></div></aside>
+</section>
 </div>
 
 <script>
@@ -251,7 +236,7 @@ function render(){
   days.forEach(d=>{const b=document.createElement("button");b.type="button";b.className=d.n===cur?"on":"";const lt=document.createElement("span");lt.append("Day "+d.n+" · "+d.l);const cy=document.createElement("small");cy.style.display="block";cy.textContent=CITY[d.n]||"";lt.append(cy);b.append(lt);const c=document.createElement("small");c.textContent=d.s.length+"곳";b.append(c);b.onclick=()=>{cur=d.n;render()};rail.append(b)});
   const d=D();$("dh").textContent="Day "+d.n+" ("+d.l+") · "+(CITY[d.n]||"")+" · "+d.s.length+"곳";
   const ol=$("stops");ol.textContent="";
-  if(!d.s.length){const li=document.createElement("li");li.className="stop";li.textContent="아직 일정이 없어요. 아래에서 장소를 추가하거나 AI에게 이 날 일정을 짜달라고 해 보세요.";ol.append(li)}
+  if(!d.s.length){const li=document.createElement("li");li.className="stop";li.textContent="아직 일정이 없어요. 아래에서 장소를 추가해 보세요.";ol.append(li)}
   d.s.forEach((s,i)=>{
     const li=document.createElement("li");li.className="stop";li.id="stop"+i;
     const nb=document.createElement("input");nb.type="number";nb.className="num";nb.min=1;nb.max=d.s.length;nb.value=i+1;nb.title="숫자를 바꾸면 그 순서로 이동해요";nb.setAttribute("aria-label",s.name+" 순서");nb.onchange=()=>moveTo(i,Number(nb.value)-1);li.append(nb);
@@ -263,7 +248,7 @@ function render(){
     r.append(btn("↑",()=>mv(i,-1),"위로"),btn("↓",()=>mv(i,1),"아래로"),btn("삭제",()=>{snap();d.s.splice(i,1);save();render()}));
     const m=document.createElement("input");m.className="memo";m.type="text";m.value=s.memo||"";m.placeholder="메모";m.setAttribute("aria-label","메모");m.onchange=()=>{snap();s.memo=m.value;save()};
     li.append(r,m);ol.append(li)});
-  $("optbox").hidden=true;$("undo").disabled=!undo.length;drawMap();syncPlanDay();
+  $("optbox").hidden=true;$("undo").disabled=!undo.length;drawMap();
 }
 $("addf").onsubmit=e=>{e.preventDefault();const n=$("an").value.trim();if(!n)return;snap();
   const arr=D().s,p=parseInt($("apos").value,10);
@@ -344,106 +329,6 @@ function drawMap(){
   drawPins();
 }
 
-/* ---------- AI (through Apps Script) ---------- */
-async function askAI(input){
-  const body=Object.assign({action:"ask",pw:password,json:true},typeof input==="string"?{prompt:input}:input);
-  const r=await api(body,90000);
-  if(r&&!r.ok&&(r.reason==="bad_password"||r.reason==="setup")){lockAgain(r.reason);throw new Error("locked")}
-  if(!r||!r.ok){const e=new Error("ai");e.reason=r&&r.reason;e.detail=r&&r.detail;throw e}
-  let t=String(r.text||"").trim().replace(/^```(?:json)?/i,"").replace(/```$/,"").trim();
-  const a=t.indexOf("{"),b=t.lastIndexOf("}");if(a<0||b<a)throw new Error("bad");
-  return JSON.parse(t.slice(a,b+1));
-}
-function aiErr(e){
-  if(e&&e.message==="locked")return "";
-  if(e&&e.reason==="bad_request")return "서버에 AI 기능(ask)이 아직 없어요. Apps Script에 AI 코드를 추가하고 새 버전으로 배포해 주세요.";
-  if(e&&e.reason==="no_key")return "서버에 Gemini 키가 없어요. 스크립트 속성에 GEMINI_API_KEY를 저장해 주세요.";
-  if(e&&e.reason==="ai_error")return "AI 서버 오류: "+(e.detail||"알 수 없음");
-  if(e&&e.message==="bad")return "AI 답변을 이해하지 못했어요. 요청을 조금 더 구체적으로 써서 다시 눌러 주세요.";
-  return errText(e)}
-const cleanStop=x=>{const o={name:String(x.name),query:String(x.query||x.name),memo:String(x.memo||"")};
-  if(/^\d{1,2}:\d{2}$/.test(String(x.time||"")))o.time=String(x.time).padStart(5,"0");
-  const la=Number(x.lat),lo=Number(x.lng);if(isFinite(la)&&isFinite(lo)&&Math.abs(la)<=90&&Math.abs(lo)<=180&&(la||lo))o.ll=[la,lo];return o};
-function status(t,err){const s=$("status");s.textContent=t;s.className=err?"err":""}
-let chatTurns=[],attList=[],lastProp=null;
-const chatEl=$("chat");
-function bub(cls,text){const el=document.createElement("div");el.className="bub "+cls;el.textContent=text;chatEl.append(el);chatEl.scrollTop=chatEl.scrollHeight;return el}
-function renderAtts(){const box=$("atts");box.textContent="";box.hidden=!attList.length;
-  attList.forEach((x,i)=>{const sp=document.createElement("span");sp.className="att";sp.append((x.kind==="img"?"🖼 ":"📄 ")+x.name);const rm=document.createElement("button");rm.type="button";rm.textContent="✕";rm.setAttribute("aria-label",x.name+" 제거");rm.onclick=()=>{attList.splice(i,1);renderAtts()};sp.append(rm);box.append(sp)})}
-function shrinkImg(file){return new Promise((res,rej)=>{const url=URL.createObjectURL(file),im=new Image();
-  im.onload=()=>{const k=Math.min(1,1280/Math.max(im.width,im.height)),c=document.createElement("canvas");c.width=Math.max(1,Math.round(im.width*k));c.height=Math.max(1,Math.round(im.height*k));
-    const g=c.getContext("2d");g.fillStyle="#fff";g.fillRect(0,0,c.width,c.height);g.drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(url);res({mime:"image/jpeg",data:c.toDataURL("image/jpeg",0.8).split(",")[1]})};
-  im.onerror=()=>{URL.revokeObjectURL(url);rej(new Error("img"))};im.src=url})}
-$("attbtn").onclick=()=>$("attach").click();
-$("attach").onchange=async()=>{
-  const files=[...$("attach").files];$("attach").value="";
-  for(const f of files){
-    if(f.type.startsWith("image/")){
-      if(!/^image\/(jpeg|png|webp|gif)$/.test(f.type)){status("사진은 JPG, PNG, WebP, GIF만 올릴 수 있어요.",true);continue}
-      if(f.size>15*1024*1024){status("사진이 너무 커요. 더 작은 사진을 올려 주세요.",true);continue}
-      if(attList.filter(x=>x.kind==="img").length>=4){status("사진은 한 번에 4장까지 보낼 수 있어요.",true);continue}
-      attList.push({kind:"img",name:f.name,file:f});
-    }else if(f.type.startsWith("text/")||/\.(txt|csv|md|json|tsv)$/i.test(f.name)){
-      try{const t=await f.text();attList.push({kind:"txt",name:f.name,text:t.slice(0,20000)})}catch(e){status("파일을 읽지 못했어요.",true)}
-    }else status("지원하지 않는 형식이에요. 사진이나 텍스트 파일(txt·csv·md)만 올릴 수 있어요. PDF는 화면을 캡처해 사진으로 올려 주세요.",true);
-  }
-  renderAtts();
-};
-$("newchat").onclick=()=>{chatTurns=[];lastProp=null;attList=[];renderAtts();chatEl.textContent="";bub("a","새 대화를 시작했어요. 바꾸고 싶은 일정이나 궁금한 점을 말해 주세요.");status("")};
-function chatRules(){
-  const all=days.map(d=>"Day "+d.n+" ("+d.l+", "+(CITY[d.n]||"")+"): "+(d.s.map(s=>s.name).join(" > ")||"(비어 있음)")).join("\n");
-  return "너는 4인 유럽 여행(2026-12-12~2027-01-07, 이탈리아·스위스·프랑스·스페인·포르투갈) 일정 편집 도우미야. 친근한 한국어로 대화하듯 답해.\n[전체 일정]\n"+all+"\n\n[사용자가 보고 있는 날] Day "+cur+"\n"+JSON.stringify(D().s.map(s=>({name:s.name,query:s.query,memo:s.memo})))+"\n\n"
-  +"규칙:\n1) 일정을 바로 바꾸지 말고 제안만 해. message에 무엇을 어떻게 왜 바꿀지 쉽게 소개하고, 마지막 문장은 '이렇게 바꿀까요?'처럼 확인을 묻는 말로 끝내. 적용은 사용자가 앱의 '이대로 바꾸기' 버튼을 눌러서 해.\n"
-  +"2) 일정을 바꾸자는 요청이면 days에 바뀌는 날의 최종 장소 목록 전체를 넣어. 요청이 특정 날을 말하지 않으면 사용자가 보고 있는 날을 바꿔. 질문·상담이거나 정보가 더 필요하면 days는 null로 두고 message로 답하거나 되물어.\n"
-  +"3) 사용자가 방금 한 제안에 '응', '좋아'처럼 동의하면, 같은 days를 다시 담고 message에서 '아래 이대로 바꾸기 버튼을 눌러 주세요'라고 안내해.\n"
-  +"4) 첨부한 사진이나 파일은 예약 확인서·일정표·메모일 수 있어. 거기서 장소·날짜·시간을 읽어 일정에 반영하자고 제안해. 읽기 어려우면 솔직히 말해.\n"
-  +"5) 숙소·교통(공항, 역) 항목은 요청이 없으면 유지해. 장소명은 한글, query는 구글맵에서 검색되는 영문/현지어(도시 포함), memo는 짧은 한국어 팁. 영업시간·예약 필요 여부는 확실하지 않으면 '확인 필요'라고 적고, 실존하는 장소만 써. lat/lng에는 대략적인 위도·경도 숫자를 넣어.\n"
-  +'아래 JSON만 출력해(코드블록·설명 금지): {"message":"사용자에게 보여줄 말","days":null 또는 {"3":[{"name":"","query":"","memo":"","lat":0,"lng":0}]}}'}
-async function send(){
-  if(!password){status("먼저 비밀번호로 로그인해 주세요.",true);return}
-  const raw=$("req").value.trim();
-  if(!raw&&!attList.length){status("요청 내용을 입력해 주세요.",true);return}
-  const files=attList.slice(),userText=raw||"첨부한 파일을 보고 일정에 반영할 내용을 알려줘.";
-  const imgFiles=files.filter(x=>x.kind==="img").map(x=>x.file);
-  let content=userText;files.filter(x=>x.kind==="txt").forEach(x=>{content+="\n\n[첨부 파일: "+x.name+"]\n"+x.text});
-  if(imgFiles.length)content+="\n\n[사진 "+imgFiles.length+"장을 함께 보냈어]";
-  const go=$("go");go.disabled=true;status("");
-  bub("u",userText+(files.length?"\n📎 "+files.map(x=>x.name).join(", "):""));
-  $("req").value="";attList=[];renderAtts();
-  const wait=bub("a","생각하는 중… (10~40초)");
-  try{
-    const images=[];for(const f of imgFiles)images.push(await shrinkImg(f));
-    const turns=[{role:"user",content:chatRules()},{role:"assistant",content:'{"message":"네, 일정을 확인했어요. 무엇을 도와드릴까요?","days":null}'},...chatTurns.slice(-8),{role:"user",content}];
-    const r=await askAI({turns,images});
-    if(!r||typeof r.message!=="string")throw new Error("bad");
-    const out={};
-    if(r.days&&typeof r.days==="object")for(const k of Object.keys(r.days)){const n=Number(k);if(!(n>=1&&n<=27)||!Array.isArray(r.days[k]))continue;const arr=r.days[k].filter(x=>x&&x.name).map(cleanStop);if(arr.length)out[n]=arr}
-    wait.textContent=r.message;
-    chatTurns.push({role:"user",content},{role:"assistant",content:JSON.stringify({message:r.message,days:Object.keys(out).length?out:null}).slice(0,12000)});
-    if(Object.keys(out).length)showProposal(out);
-  }catch(e){
-    if(e&&e.message==="locked"){wait.remove();return}
-    wait.className="bub e";wait.textContent=e&&e.message==="img"?"사진을 읽지 못했어요. 다른 사진으로 다시 올려 주세요.":aiErr(e)||"AI 답변을 받지 못했어요.";
-  }finally{go.disabled=false;chatEl.scrollTop=chatEl.scrollHeight}
-}
-function showProposal(out){
-  if(lastProp){lastProp.dataset.old="1";lastProp.querySelectorAll("button").forEach(b=>b.disabled=true)}
-  const card=document.createElement("div");card.className="prop";
-  Object.keys(out).forEach(n=>{const d=days.find(x=>x.n===Number(n));
-    const b=document.createElement("b");b.textContent="Day "+n+" ("+d.l+") "+(d.s.length)+"곳 → "+out[n].length+"곳";
-    const ul=document.createElement("ul");out[n].forEach(x=>{const li=document.createElement("li");li.textContent=x.name;if(x.memo){const m=document.createElement("small");m.textContent=" — "+x.memo;li.append(m)}ul.append(li)});card.append(b,ul)});
-  const row=document.createElement("div");row.className="row";
-  const ok=document.createElement("button");ok.type="button";ok.className="btn";ok.textContent="이대로 바꾸기";
-  ok.onclick=()=>{snap();Object.keys(out).forEach(n=>{days.find(x=>x.n===Number(n)).s=out[n]});save();render();
-    card.dataset.old="1";card.querySelectorAll("button").forEach(b=>b.disabled=true);lastProp=null;
-    chatTurns.push({role:"user",content:"[앱] 위 제안을 적용했어. 일정이 바뀌었어."});bub("a","바꿨어요! 마음에 안 들면 가운데 아래의 '되돌리기'를 누르세요. 더 고치고 싶은 곳이 있으면 말씀해 주세요.")};
-  const no=document.createElement("button");no.type="button";no.className="btn ghost";no.textContent="바꾸지 않기";
-  no.onclick=()=>{card.remove();lastProp=null;chatTurns.push({role:"user",content:"[앱] 위 제안은 적용하지 않기로 했어."});bub("a","알겠어요. 다른 방향으로 바꾸고 싶으면 말씀해 주세요.")};
-  row.append(ok,no);card.append(row);chatEl.append(card);lastProp=card;chatEl.scrollTop=chatEl.scrollHeight;
-}
-
-$("go").onclick=send;$("req").addEventListener("keydown",e=>{if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)){e.preventDefault();send()}});
-
 /* ---------- 숙소 기준 최적 동선 ---------- */
 const TRANS=/공항|역$|터미널|정류장|버스|Station|Airport|Gare |Gare$|Estaci|Terminal|Autobus/i;
 const LODGE=/호텔|호스텔|숙소|아파트|레지던스|하우스|바이필로우|아테나스|Hotel|Hostel|Apartments|Residence|BYPILLOW|Cerise|Atenas|Room00|The People/i;
@@ -476,21 +361,21 @@ function planOpt(d){
   let a=0;while(a<st.length&&isT(st[a]))a++;
   let z=st.length;while(z>a&&isT(st[z-1]))z--;
   const L=st.slice(0,a),T=st.slice(z),rest=st.slice(a,z);
-  if(rest.some(isT))return{err:"중간에 역·공항·터미널이 끼어 있어요. 자동으로 바꾸면 이동 순서가 꼬일 수 있어서, 이런 날은 'AI와 대화'로 부탁해 주세요."};
+  if(rest.some(isT))return{err:"중간에 역·공항·터미널이 끼어 있어요. 자동으로 바꾸면 이동 순서가 꼬일 수 있어서, 이런 날은 직접 순서를 바꿔 주세요."};
   let S=null,E=null,anchor=null;
   if(isL(rest[0]))S=rest[0];
   else if(L.length)anchor=L[L.length-1];
   else return{err:"이 날은 숙소에서 시작하지 않아서 출발점을 정할 수 없어요."};
   const last=rest[rest.length-1];
   if(S){if(rest.length>1&&isL(last)&&last.query!==S.query)E=last}
-  else{if(isL(last))E=last;else return{err:"도착할 숙소를 찾지 못했어요. 'AI와 대화'로 부탁해 주세요."}}
+  else{if(isL(last))E=last;else return{err:"도착할 숙소를 찾지 못했어요. 직접 순서를 바꿔 주세요."}}
   const startStop=S||anchor,closed=!E,endStop=E||S;
   const sC=ll(startStop),eC=ll(endStop);
   if(!sC||!eC)return{err:"숙소나 출발 장소의 위치를 몰라서 계산할 수 없어요."};
   const skip=new Set([S,E].filter(Boolean)),dupq=new Set([S&&S.query,E&&E.query].filter(Boolean));
   const mids=rest.filter(x=>!skip.has(x)&&!dupq.has(x.query));
   const withC=mids.filter(x=>ll(x)),noC=mids.filter(x=>!ll(x));
-  if(hav(sC,eC)>40||withC.some(x=>hav(sC,ll(x))>60))return{err:"도시를 옮기는 날이라 숙소 왕복 동선이 맞지 않아요. 이런 날은 'AI와 대화'로 부탁해 주세요."};
+  if(hav(sC,eC)>40||withC.some(x=>hav(sC,ll(x))>60))return{err:"도시를 옮기는 날이라 숙소 왕복 동선이 맞지 않아요. 이런 날은 직접 순서를 바꿔 주세요."};
   if(withC.length<2)return{err:"순서를 바꿀 장소가 2곳 이상 필요해요."};
   const ord=solveOrder(sC,withC.map(ll),eC).map(i=>withC[i]);
   const strip=x=>{const o=Object.assign({},x);delete o.time;return o};
@@ -517,42 +402,6 @@ $("optbtn").onclick=()=>{
   const no=document.createElement("button");no.type="button";no.className="btn ghost";no.textContent="바꾸지 않기";no.onclick=()=>{box.hidden=true};
   row.append(ok,no);box.append(h,sm,ol,note,row);
 };
-
-/* ---------- replan tab ---------- */
-function tab(t){$("v-day").hidden=t!=="day";$("v-plan").hidden=t!=="plan";$("tb-day").className=t==="day"?"on":"";$("tb-plan").className=t==="plan"?"on":"";
-  if(t==="plan")syncPlanDay();if(t==="day")setTimeout(()=>{if(LM){LM.invalidateSize();drawMap()}},60)}
-$("tb-day").onclick=()=>tab("day");$("tb-plan").onclick=()=>tab("plan");
-days.forEach(d=>{const o=document.createElement("option");o.value=d.n;o.textContent="Day "+d.n+" ("+d.l+") "+(CITY[d.n]||"");$("pday").append(o)});
-function syncPlanDay(){const s=$("pday");if(s.value!==String(cur)&&!pplan)s.value=cur}
-function pstatus(t,e){const el=$("pstatus");el.textContent=t;el.className=e?"err":""}
-$("pform").onsubmit=async e=>{
-  e.preventDefault();const n=Number($("pday").value),d=days.find(x=>x.n===n),go=$("pgo");
-  if(!d.s.length&&$("pnew").value!=="yes"&&!$("pmust").value.trim()){pstatus("이 날은 비어 있어요. '새 장소도 추가'로 바꾸거나 꼭 넣을 곳을 적어 주세요.",true);return}
-  go.disabled=true;$("pprev").hidden=true;pplan=null;pstatus("AI가 동선을 계산하고 있어요… (10~30초)");
-  try{
-    const items=d.s.map(x=>{const c=ll(x);return{name:x.name,query:x.query,memo:x.memo,lat:c?c[0]:null,lng:c?c[1]:null}});
-    const pd=days.find(x=>x.n===n-1),nd=days.find(x=>x.n===n+1),edge=(x,last)=>x&&x.s.length?x.s[last?x.s.length-1:0].name:"없음";
-    const r=await askAI("너는 유럽 여행 일정 최적화 도우미야. 4인 여행(2026-12-12~2027-01-07). 아래 하루를 이동 동선이 가장 효율적이 되도록 다시 짜줘.\n[날짜] Day "+n+" ("+d.l+", 겨울)\n[전날 마지막 장소] "+edge(pd,true)+"\n[다음날 첫 장소] "+edge(nd,false)+"\n[현재 장소(위도·경도 포함)]\n"+JSON.stringify(items)+"\n\n"
-      +"[조건] 시작 "+$("pst").value+", 마무리 "+$("pen").value+", 이동 "+$("pmode").value+", 강도 "+$("ppace").value+", 새 장소 "+($("pnew").value==="yes"?"식사·카페 등 필요한 곳을 추가해도 됨":"추가하지 말고 현재 장소만 재배치")
-      +"\n[꼭 넣을 곳] "+($("pmust").value||"없음")+"\n[뺄 곳] "+($("pskip").value||"없음")+"\n[추가 요청] "+($("pnote").value||"없음")+"\n\n"
-      +"규칙: 지리적으로 가까운 장소끼리 묶고 지그재그 이동을 줄여. 숙소는 보통 처음과 끝에 두고, 공항·역 같은 교통 항목은 유지해. 점심(12~14시)·저녁(18~20시) 시간대를 고려해. 요일·겨울 영업시간상 문제가 있거나 예약이 필요한 곳은 memo에 쓰고, 확실하지 않으면 '확인 필요'라고 적어. time은 HH:MM, memo는 짧은 한국어(이동 방법·소요 시간·팁), 실존하는 장소만, lat/lng는 대략적인 위도·경도 숫자. 아래 JSON만 출력해: "
-      +'{"summary":"동선을 어떻게 바꿨는지 2문장 이내","stops":[{"time":"09:00","name":"","query":"","memo":"","lat":0,"lng":0}]}');
-    if(!r||!Array.isArray(r.stops))throw new Error("bad");
-    const ns=r.stops.filter(x=>x&&x.name).map(cleanStop);if(!ns.length)throw new Error("bad");
-    pplan={n,stops:ns};pstatus("");showPlan(String(r.summary||""),d);
-  }catch(err){pstatus(aiErr(err),true)}finally{go.disabled=false}
-};
-function showPlan(sum,d){
-  const p=$("pprev");p.textContent="";p.hidden=false;
-  const h=document.createElement("b");h.textContent="Day "+d.n+" 새 일정 · "+d.s.length+"곳 → "+pplan.stops.length+"곳";
-  const sm=document.createElement("div");sm.textContent=sum;const ol=document.createElement("ol");
-  pplan.stops.forEach(x=>{const li=document.createElement("li");li.textContent=(x.time?x.time+"  ":"")+x.name;if(x.memo){const m=document.createElement("small");m.textContent=" — "+x.memo;li.append(m)}ol.append(li)});
-  const row=document.createElement("div");row.className="row";
-  const ok=document.createElement("button");ok.type="button";ok.className="btn";ok.textContent="이 일정으로 적용";
-  ok.onclick=()=>{snap();days.find(x=>x.n===pplan.n).s=pplan.stops;cur=pplan.n;pplan=null;p.hidden=true;save();pstatus("적용했어요. 일정·지도 탭에서 확인하세요. 마음에 안 들면 되돌리기를 누르세요.");render();tab("day")};
-  const no=document.createElement("button");no.type="button";no.className="btn ghost";no.textContent="취소";no.onclick=()=>{pplan=null;p.hidden=true};
-  row.append(ok,no);p.append(h,sm,ol,row);
-}
 
 render();
 const saved=storeGet();if(saved)unlock(saved);
