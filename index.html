@@ -242,26 +242,34 @@ if(typeof L!=="undefined"){
   lmLayer=L.layerGroup().addTo(LM);
 }
 let lastPts=[],pinLayer=null;
-function drawPins(){   // 겹치는 핀을 화면에서 서로 안 가리게 벌려서 표시 (원래 위치는 작은 점+가는 선)
+const HOTEL_RE=/호텔|호스텔|숙소|아파트먼트|레지던스|센트럴 하우스|Hotel|Hostel|Apartments|Residence|Cerise|PLUS Florence|The People|Central House|TOC Hostel|Barabas|Windrose/i;
+const isHotelStop=s=>HOTEL_RE.test((s.name||"")+" "+(s.query||""));
+const PIN_SVG='<svg width="30" height="40" viewBox="0 0 30 40"><path d="M15 2C8.4 2 3 7.4 3 14c0 8.6 12 24 12 24s12-15.4 12-24C27 7.4 21.6 2 15 2z" fill="#dc2626" stroke="#fff" stroke-width="2.5"/><circle cx="15" cy="14" r="4.6" fill="#fff"/></svg>';
+function drawPins(){   // 겹치는 핀은 화면에서 서로 안 가리게 벌려 표시. 숙소는 번호 없는 빨간 핀 하나로 합쳐 표시
   if(!LM)return;
   if(!pinLayer)pinLayer=L.layerGroup().addTo(LM);
   pinLayer.clearLayers();
-  const pts=lastPts;if(!pts.length)return;
-  const R=31,placed=[],last=pts.length-1;
+  const items=[],seenHotel={};
+  lastPts.forEach(p=>{
+    if(isHotelStop(p.s)){const k=p.s.query||p.s.name;if(seenHotel[k])return;seenHotel[k]=1;items.push({p,hotel:true})}
+    else items.push({p,hotel:false});
+  });
+  if(!items.length)return;
+  const R=31,HY=23,placed=[];   // HY: 빨간 핀은 뾰족한 끝이 실제 위치, 둥근 머리는 그 위
   const ring=[[0,0]];for(let r=1;r<=8;r++){const k=6+r*3;for(let j=0;j<k;j++){const t=2*Math.PI*j/k-Math.PI/2;ring.push([Math.cos(t)*R*r*.9,Math.sin(t)*R*r*.9])}}
-  pts.forEach((p,pi)=>{
-    const base=LM.latLngToContainerPoint(p.c);let pos=base;
-    for(const [dx,dy] of ring){const q=L.point(base.x+dx,base.y+dy);if(placed.every(o=>o.distanceTo(q)>=R)){pos=q;break}}
+  items.forEach(it=>{
+    const p=it.p,yo=it.hotel?-HY:0,base=LM.latLngToContainerPoint(p.c);let pos=L.point(base.x,base.y+yo);
+    for(const [dx,dy] of ring){const q=L.point(base.x+dx,base.y+dy+yo);if(placed.every(o=>o.distanceTo(q)>=R)){pos=q;break}}
     placed.push(pos);
-    const moved=pos.distanceTo(base)>2,at=moved?LM.containerPointToLatLng(pos):p.c;
+    const tip=L.point(pos.x,pos.y-yo),moved=tip.distanceTo(base)>2,at=moved?LM.containerPointToLatLng(tip):p.c;
     if(moved){
       L.polyline([p.c,at],{color:"#334155",weight:1.5,opacity:.8}).addTo(pinLayer);
       L.circleMarker(p.c,{radius:3,color:"#fff",weight:1.5,fillColor:"#334155",fillOpacity:1}).addTo(pinLayer);
     }
-    const cls="lm"+(p.i===0?" f":pi===last?" e":"");
-    const ic=L.divIcon({className:"",html:'<div class="'+cls+'">'+(p.i+1)+'</div>',iconSize:[30,30],iconAnchor:[15,15]});
-    const m=L.marker(at,{icon:ic,title:(p.i+1)+". "+p.s.name,zIndexOffset:1000+p.i}).addTo(pinLayer);
-    const tt=document.createElement("span");tt.textContent=p.s.name;m.bindTooltip(tt,{direction:"top",offset:[0,-14]});
+    const ic=it.hotel?L.divIcon({className:"",html:PIN_SVG,iconSize:[30,40],iconAnchor:[15,38]})
+                     :L.divIcon({className:"",html:'<div class="lm">'+(p.i+1)+'</div>',iconSize:[30,30],iconAnchor:[15,15]});
+    const m=L.marker(at,{icon:ic,title:(it.hotel?"숙소 · ":(p.i+1)+". ")+p.s.name,zIndexOffset:(it.hotel?500:1000)+p.i}).addTo(pinLayer);
+    const tt=document.createElement("span");tt.textContent=(it.hotel?"🏨 ":"")+p.s.name;m.bindTooltip(tt,{direction:"top",offset:[0,it.hotel?-34:-14]});
     m.on("click",()=>goStop(p.i));
   });
 }
@@ -269,7 +277,7 @@ if(LM)LM.on("zoomend",()=>drawPins());
 function drawMap(){
   const d=D(),pts=[];d.s.forEach((s,i)=>{const c=ll(s);if(c)pts.push({i,s,c})});
   const n=d.s.length,miss=n-pts.length,q=s=>encodeURIComponent(s.query||s.name);
-  $("mapnote").textContent=!n?"":!LM?"지도 라이브러리를 불러오지 못했어요. 구글 지도 버튼을 이용해 주세요.":"선은 장소 사이 직선이에요. 실제 길은 구글 지도 버튼으로 확인하세요."+(miss?" 위치를 모르는 "+miss+"곳은 지도에서 빠졌어요.":"");
+  $("mapnote").textContent=!n?"":!LM?"지도 라이브러리를 불러오지 못했어요. 구글 지도 버튼을 이용해 주세요.":"빨간 핀은 숙소예요. 선은 장소 사이 직선이에요. 실제 길은 구글 지도 버튼으로 확인하세요."+(miss?" 위치를 모르는 "+miss+"곳은 지도에서 빠졌어요.":"");
   const gl=$("glinks");gl.textContent="";
   if(n===1){const a=document.createElement("a");a.className="ib";a.target="_blank";a.rel="noopener";a.href="https://www.google.com/maps/search/?api=1&query="+q(d.s[0]);a.textContent="구글 지도에서 열기";gl.append(a)}
   for(let a0=0;a0<n-1;a0+=9){const ch=d.s.slice(a0,a0+10),a=document.createElement("a");a.className="ib";a.target="_blank";a.rel="noopener";
