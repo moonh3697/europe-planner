@@ -316,7 +316,7 @@ function drawMap(){
   if(n===1){const a=document.createElement("a");a.className="ib";a.target="_blank";a.rel="noopener";a.href="https://www.google.com/maps/search/?api=1&query="+q(d.s[0]);a.textContent="구글 지도에서 열기";gl.append(a)}
   for(let a0=0;a0<n-1;a0+=9){const ch=d.s.slice(a0,a0+10),a=document.createElement("a");a.className="ib";a.target="_blank";a.rel="noopener";
     a.href="https://www.google.com/maps/dir/?api=1&origin="+q(ch[0])+"&destination="+q(ch[ch.length-1])+(ch.length>2?"&waypoints="+ch.slice(1,-1).map(q).join("%7C"):"");
-    a.textContent="구글 지도로 동선 열기"+(n>10?" ("+(a0+1)+"~"+(a0+ch.length)+"번)":"");gl.append(a)}
+    a.textContent="구글 지도로 동선 열기 · "+(a0+1)+"~"+(a0+ch.length)+"번"+(ch.length>1?" (구글 지도 A="+(a0+1)+"번 … "+String.fromCharCode(64+ch.length)+"="+(a0+ch.length)+"번)":"");gl.append(a)}
   if(miss)geocodeMissing();
   if(!LM)return;
   lmLayer.clearLayers();if(!pts.length)return;
