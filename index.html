@@ -96,8 +96,9 @@ let geoCache={};try{geoCache=JSON.parse(localStorage.getItem("eu-geo-v2")||"{}")
 const GEOQ={"TOC Hostel Sevilla":"Calle Miguel Mañara 18, Sevilla, Spain","TOC Hostel Granada":"Placeta de Castillejos 1, Granada, Spain"};
 const okLL=c=>Array.isArray(c)&&c.length===2&&isFinite(c[0])&&isFinite(c[1])&&c[0]>=33&&c[0]<=62&&c[1]>=-13&&c[1]<=32;   // 유럽 범위 밖 좌표는 잘못된 값으로 보고 무시
 const normN=t=>String(t||"").replace(/[★☆\[\]()（）\s·.,\-]|숙소/g,"").toLowerCase();
-const NAMEQ=(()=>{const m=[];ORIG.forEach(d=>d.s.forEach(([n,q])=>{const k=normN(n);if(k.length>=3&&COORDS[q]&&!m.some(x=>x[0]===k))m.push([k,q])}));return m})();
-const byName=s=>{const k=normN(s.name);if(k.length<3)return null;let h=NAMEQ.find(x=>x[0]===k);if(!h&&k.length>=4)h=NAMEQ.find(x=>x[0].length>=4&&(x[0].includes(k)||k.includes(x[0])));return h?COORDS[h[1]]:null};   // 이름이 원래 일정의 장소와 같으면 그 좌표 사용
+const NAMEQ=(()=>{const m=[];ORIG.forEach(d=>d.s.forEach(([n,q])=>{const k=normN(n);if(k.length>=3&&COORDS[q]&&!m.some(x=>x[0]===k&&x[1]===q))m.push([k,q])}));return m})();
+const byName=s=>{const k=normN(s.name);if(k.length<3)return null;let m=NAMEQ.filter(x=>x[0]===k);if(!m.length&&k.length>=4)m=NAMEQ.filter(x=>x[0].length>=4&&(x[0].includes(k)||k.includes(x[0])));
+  const cs=m.map(x=>COORDS[x[1]]);return cs.length&&cs.every(c=>hav(c,cs[0])<1)?cs[0]:null};   // 같은 이름이 여러 도시에 있으면(개선문 등) 쓰지 않음   // 이름이 원래 일정의 장소와 같으면 그 좌표 사용
 const ll=s=>COORDS[s.query]||(okLL(s.ll)?s.ll:null)||(okLL(geoCache[s.query])?geoCache[s.query]:null)||byName(s);
 const geoTried=new Set();let geoBusy=false;
 const CITYPT={"Rome":[41.9,12.49],"Florence":[43.77,11.25],"Venice":[45.44,12.32],"Lucerne":[47.05,8.31],"Strasbourg":[48.58,7.75],"Paris":[48.86,2.35],"Barcelona":[41.39,2.17],"Porto":[41.15,-8.61],"Lisbon":[38.72,-9.14],"Seville":[37.39,-5.99],"Granada":[37.18,-3.6],"Madrid":[40.42,-3.7],"Ronda":[36.74,-5.17],"Rennes":[48.11,-1.67],"Versailles":[48.8,2.12],"Mont-Saint-Michel":[48.64,-1.51]};
@@ -336,7 +337,10 @@ function drawMap(){
   L.polyline(ls,{color:"#ffffff",weight:8,opacity:.9}).addTo(lmLayer);
   L.polyline(ls,{color:"#1d4ed8",weight:4,opacity:.95,dashArray:"2 9",lineCap:"round"}).addTo(lmLayer);
   lastPts=pts.concat(apx).sort((x,y)=>x.i-y.i);
-  if(ls.length===1)LM.setView(ls[0],15);else LM.fitBounds(L.latLngBounds(ls),{padding:[40,40],maxZoom:16});
+  let fit=ls;   // 도시 간 이동일: 점이 가장 많이 모인 도시 쪽을 기본 화면으로 (축소하면 전체 선이 보임)
+  if(ls.length>2){let best=[];ls.forEach(a=>{const g=ls.filter(b=>hav(a,b)<60);if(g.length>best.length)best=g});
+    if(best.length<ls.length&&best.length>=2)fit=best}
+  if(fit.length===1)LM.setView(fit[0],15);else LM.fitBounds(L.latLngBounds(fit),{padding:[40,40],maxZoom:16});
   drawPins();
 }
 
